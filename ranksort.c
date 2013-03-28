@@ -1,43 +1,19 @@
-/*
-RankSort v1.0: This code uses the rank-sort algorithm to sort an array of
-integers.
-
-Copyright (c) 2013, Texas State University-San Marcos. All rights reserved.
-
-Redistribution and use in source and binary forms, with or without modification,
-are permitted for academic, research, experimental, or personal use provided
-that the following conditions are met:
-
-   * Redistributions of source code must retain the above copyright notice, 
-     this list of conditions and the following disclaimer.
-   * Redistributions in binary form must reproduce the above copyright notice,
-     this list of conditions and the following disclaimer in the documentation
-     and/or other materials provided with the distribution.
-   * Neither the name of Texas State University-San Marcos nor the names of its
-     contributors may be used to endorse or promote products derived from this
-     software without specific prior written permission.
-
-For all other uses, please contact the Office for Commercialization and Industry
-Relations at Texas State University-San Marcos <http://www.txstate.edu/ocir/>.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
-ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
-ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-Author: Martin Burtscher <burtscher@txstate.edu>
-*/
-
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/time.h>
+
+/*
+#ifdef_OPENMP
+int my_rank = omp_get_thread_num();
+int thread_count = omp_get_num_threads();
+#else
+int my_rank = 0;
+int thread_count = 1;
+#endif
+*/
+
+int thread_count;
 
 int main(int argc, char *argv[])
 {
@@ -45,12 +21,15 @@ int main(int argc, char *argv[])
   register int *a, *b;
   struct timeval start, end;
 
-  printf("RankSort v1.0\n");
+  printf("RankSort Outer Parallelization OpenMP\n");
 
   /* check command line */
-  if (argc != 2) {fprintf(stderr, "usage: %s number_of_elements\n", argv[0]); exit(-1);}
+  if (argc != 3) {fprintf(stderr, "usage: %s number_of_elements number_of_threads\n", argv[0]); exit(-1);}
   size = atoi(argv[1]);
   if (size < 1) {fprintf(stderr, "number of elements must be at least 1\n"); exit(-1);}
+  
+  thread_count = atoi(argv[2]);
+  if (thread_count < 1) {fprintf(stderr, "number of threads must be at least 1\n"); exit(-1);}
 
   /* allocate arrays */
   a = (int *)malloc(size * sizeof(int));
@@ -59,12 +38,13 @@ int main(int argc, char *argv[])
 
   /* generate input */
   for (i = 0; i < size; i++) a[i] = -((i & 2) - 1) * i;
-  printf("sorting %d values\n", size);
+  printf("sorting %d unsorted values with %d threads.\n", size, thread_count);
 
   /* start time */
   gettimeofday(&start, NULL);
-
+  
   /* sort the values */
+#pragma omp parallel for num_threads (thread_count) default(none) private(j,cnt,val) shared(size,a,b)
   for (i = 0; i < size; i++) {
     cnt = 0;
     val = a[i];
